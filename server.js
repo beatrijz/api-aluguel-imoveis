@@ -1,11 +1,12 @@
 const express = require("express");
 
 const app = express();
+
 const PORT = 8080;
 
 app.use(express.json());
 
-const imoveis = [
+let imoveis = [
   {
     id: 1,
     titulo: "Apartamento no Centro",
@@ -30,10 +31,48 @@ const imoveis = [
   }
 ];
 
+
+// GET - listar imóveis
 app.get("/api/imoveis", (req, res) => {
   res.status(200).json(imoveis);
 });
 
+
+// POST - cadastrar imóvel
+app.post("/api/imoveis", (req, res) => {
+
+  const {
+    titulo,
+    tipo,
+    cidade,
+    bairro,
+    quartos,
+    banheiros,
+    valorAluguel,
+    disponivel
+  } = req.body;
+
+
+  const novoImovel = {
+    id: imoveis.length + 1,
+    titulo,
+    tipo,
+    cidade,
+    bairro,
+    quartos,
+    banheiros,
+    valorAluguel,
+    disponivel
+  };
+
+
+  imoveis.push(novoImovel);
+
+  res.status(201).json(novoImovel);
+});
+
+
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`API rodando em http://localhost:${PORT}`);
 });
