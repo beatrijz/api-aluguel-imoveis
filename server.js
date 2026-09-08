@@ -71,8 +71,12 @@ app.post("/api/imoveis", (req, res) => {
   res.status(201).json(novoImovel);
 });
 
-
 // Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`API rodando em http://localhost:${PORT}`);
-});
+/* istanbul ignore next */
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`API rodando em http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
