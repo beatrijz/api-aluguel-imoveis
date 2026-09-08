@@ -1,17 +1,18 @@
-name: Testes - Commits
+name: CI - Validação de Commits
 
 on:
   push:
     branches:
       - main
-      - "feature/**"
+      - feature/**
 
 jobs:
-  test:
+  build-and-test:
+    name: Build e Testes
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clonar repositório
+      - name: Checkout do repositório
         uses: actions/checkout@v4
 
       - name: Configurar Node.js
@@ -23,5 +24,5 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Executar testes
+      - name: Executar testes e cobertura
         run: npm test
