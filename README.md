@@ -4,7 +4,7 @@ API REST desenvolvida em JavaScript utilizando Node.js e Express.
 
 ## Objetivo
 
-A API permite listar imóveis disponíveis para aluguel e cadastrar novos imóveis.
+A API permite listar imóveis disponíveis para aluguel, cadastrar novos imóveis e remover imóveis.
 
 ## Tecnologias utilizadas
 
@@ -33,17 +33,18 @@ A API será executada em:
 ```
 http://localhost:8080
 ```
-Endpoints
-Listar imóveis
 
-Método:
+## Endpoints
 
-GET /api/imoveis
+### Listar imóveis
 
-Retorna a lista de imóveis cadastrados.
+`GET /api/imoveis`
+
+Retorna a lista de imóveis cadastrados com status `200 OK`.
 
 Exemplo de resposta:
 
+```json
 [
   {
     "id": 1,
@@ -57,14 +58,15 @@ Exemplo de resposta:
     "disponivel": true
   }
 ]
-Cadastrar imóvel
+```
 
-Método:
+### Cadastrar imóvel
 
-POST /api/imoveis
+`POST /api/imoveis`
 
 Exemplo de corpo da requisição:
 
+```json
 {
   "titulo": "Casa nova",
   "tipo": "Casa",
@@ -75,21 +77,16 @@ Exemplo de corpo da requisição:
   "valorAluguel": 500,
   "disponivel": true
 }
+```
 
-A API retorna o imóvel cadastrado com status:
+Retorna o imóvel cadastrado com status `201 Created`.
 
-201 Created
+### Remover imóvel
 
-Remover imóvel
+`DELETE /api/imoveis/:id`
 
-Método:
-
-DELETE /api/imoveis/:id
-
-Respostas:
-
-- 204 No Content: o imóvel existia e foi removido.
-- 404 Not Found: não existe imóvel com o id informado.
+- `204 No Content`: o imóvel existia e foi removido.
+- `404 Not Found`: não existe imóvel com o id informado.
 
 ## Workflow utilizado
 
@@ -111,6 +108,8 @@ O ciclo de cada funcionalidade é:
 4. Abrir um pull request para a `main`; o job **Qualidade de código** roda automaticamente.
 5. Com o job aprovado, fazer o merge do pull request na `main`.
 
+No início do projeto, antes da proteção da `main`, o fluxo ainda não era seguido à risca: a `feature/cadastrar-imovel` foi integrada localmente, sem pull request, e os commits de documentação do README foram feitos diretamente na `main`. A partir da `feature/github-actions`, todas as alterações passaram a entrar por pull request, e hoje a proteção da `main` impede push direto.
+
 ## Testes e qualidade
 
 ```bash
@@ -124,7 +123,7 @@ Os workflows `.github/workflows/commits.yml` (push na `main` e em `feature/**`) 
 
 ## Commits assinados
 
-Todos os commits são assinados com chave SSH. A chave pública foi cadastrada no GitHub como *Signing Key*, então os commits aparecem como **Verified**.
+A partir da `feature/remover-imovel` (PR #3), todos os commits são assinados com chave SSH. A chave pública foi cadastrada no GitHub como *Signing Key*, então os commits aparecem como **Verified**. Os commits anteriores a essa mudança não são assinados, e a regra de commits assinados da `main` garante que nenhum commit sem assinatura entre daqui em diante.
 
 ## Proteção de branches
 
