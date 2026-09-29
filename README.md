@@ -79,18 +79,58 @@ Exemplo de corpo da requisição:
 A API retorna o imóvel cadastrado com status:
 
 201 Created
-Workflow utilizado
 
-Foi utilizado o Git Flow.
+Remover imóvel
 
-O desenvolvimento foi organizado utilizando branches separadas para novas funcionalidades.
+Método:
 
-A branch main contém a versão estável do projeto.
+DELETE /api/imoveis/:id
 
-Para adicionar a funcionalidade de cadastro de imóveis foi criada a branch:
+Respostas:
 
-feature/cadastrar-imovel
+- 204 No Content: o imóvel existia e foi removido.
+- 404 Not Found: não existe imóvel com o id informado.
 
-Após os testes da nova funcionalidade, a branch foi integrada novamente na main.
+## Workflow utilizado
 
-Esse fluxo facilita a organização do desenvolvimento, permitindo criar novas funcionalidades sem alterar diretamente a versão principal do projeto.
+Foi utilizado o **GitHub Flow**.
+
+Existe uma única branch de longa duração, a `main`, que contém sempre a versão estável (produção). Não existem as branches `develop`, `release/*` ou `hotfix/*` do Git Flow.
+
+Cada funcionalidade é desenvolvida em uma branch curta criada a partir da `main`:
+
+- `feature/cadastrar-imovel`: rota POST de cadastro de imóveis
+- `feature/github-actions`: workflows do GitHub Actions (PRs #1 e #2)
+- `feature/remover-imovel`: rota DELETE, testes, linter e job de qualidade
+
+O ciclo de cada funcionalidade é:
+
+1. Atualizar a `main` local (`git pull`).
+2. Criar a branch `feature/<nome>` a partir da `main`.
+3. Fazer commits assinados na branch e enviá-la para o GitHub.
+4. Abrir um pull request para a `main`; o job **Qualidade de código** roda automaticamente.
+5. Com o job aprovado, fazer o merge do pull request na `main`.
+
+## Testes e qualidade
+
+```bash
+npm run lint              # ESLint
+npm run test:unit         # testes de unidade (tests/unit)
+npm run test:integration  # testes de integração com supertest (tests/integration)
+npm test                  # todos os testes + cobertura (falha abaixo de 90%)
+```
+
+Os workflows `.github/workflows/commits.yml` (push na `main` e em `feature/**`) e `.github/workflows/pull-request.yml` (pull requests para a `main`) executam o job **Qualidade de código**, com as etapas de linter, testes de unidade, testes de integração e verificação de cobertura.
+
+## Commits assinados
+
+Todos os commits são assinados com chave SSH. A chave pública foi cadastrada no GitHub como *Signing Key*, então os commits aparecem como **Verified**.
+
+## Proteção de branches
+
+A `main` é a branch de produção e está protegida:
+
+- Não aceita push direto: toda alteração entra por pull request.
+- O pull request só pode ser integrado se o job **Qualidade de código** passar.
+- Os commits precisam ser assinados.
+- Não é permitido force push nem apagar a branch.
