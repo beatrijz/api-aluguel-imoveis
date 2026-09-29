@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  build-and-test:
-    name: Build e Testes
+  qualidade:
+    name: Qualidade de código
     runs-on: ubuntu-latest
 
     steps:
@@ -23,5 +23,14 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Executar testes e cobertura
+      - name: Verificação de Linter
+        run: npm run lint
+
+      - name: Testes de unidade
+        run: npm run test:unit
+
+      - name: Testes de integração
+        run: npm run test:integration
+
+      - name: Verificação da cobertura de código (mínimo 90%)
         run: npm test
