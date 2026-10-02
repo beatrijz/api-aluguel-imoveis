@@ -121,6 +121,19 @@ npm test                  # todos os testes + cobertura (falha abaixo de 90%)
 
 Os workflows `.github/workflows/commits.yml` (push na `main` e em `feature/**`) e `.github/workflows/pull-request.yml` (pull requests para a `main`) executam o job **Qualidade de código**, com as etapas de linter, testes de unidade, testes de integração e verificação de cobertura.
 
+## Análise estática (SonarQube Cloud)
+
+O projeto é analisado pelo SonarQube Cloud (plano gratuito):
+
+https://sonarcloud.io/project/overview?id=beatrijz_api-aluguel-imoveis
+
+O job **Análise SonarQube** dos workflows executa os testes, gera o relatório de cobertura (`coverage/lcov.info`) e envia a análise para o SonarQube Cloud. A configuração fica em `sonar-project.properties`, e o token de acesso fica no secret `SONAR_TOKEN` do repositório.
+
+Problemas apontados pela primeira análise e corrigidos:
+
+- `src/app.js`: o Express expunha a versão do framework pelo cabeçalho `X-Powered-By`; o cabeçalho foi desativado com `app.disable("x-powered-by")`.
+- Workflows: o `npm ci` executava scripts de instalação dos pacotes; agora é usado `npm ci --ignore-scripts`.
+
 ## Commits assinados
 
 A partir da `feature/remover-imovel` (PR #3), todos os commits são assinados com chave SSH. A chave pública foi cadastrada no GitHub como *Signing Key*, então os commits aparecem como **Verified**. Os commits anteriores a essa mudança não são assinados, e a regra de commits assinados da `main` garante que nenhum commit sem assinatura entre daqui em diante.

@@ -3,6 +3,9 @@ const imoveisRepository = require("./imoveisRepository");
 
 const app = express();
 
+// Não expor a tecnologia do servidor no cabeçalho X-Powered-By
+app.disable("x-powered-by");
+
 app.use(express.json());
 
 
