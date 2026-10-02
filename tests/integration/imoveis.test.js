@@ -24,6 +24,12 @@ describe("GET /api/imoveis", () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
   });
+
+  test("não expõe o cabeçalho X-Powered-By", async () => {
+    const res = await request(app).get("/api/imoveis");
+
+    expect(res.headers["x-powered-by"]).toBeUndefined();
+  });
 });
 
 describe("POST /api/imoveis", () => {

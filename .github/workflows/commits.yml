@@ -22,7 +22,7 @@ jobs:
           cache: npm
 
       - name: Instalar dependências
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Verificação de Linter
         run: npm run lint
@@ -35,3 +35,30 @@ jobs:
 
       - name: Verificação da cobertura de código (mínimo 90%)
         run: npm test
+
+  sonarqube:
+    name: Análise SonarQube
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Gerar relatório de cobertura
+        run: npm test
+
+      - name: Análise SonarQube
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
