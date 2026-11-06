@@ -19,6 +19,7 @@ A API permite listar imóveis disponíveis para aluguel, cadastrar novos imóvei
 - Git
 - GitHub
 - Docker
+- Vagrant + VirtualBox
 
 ## Como executar
 
@@ -157,6 +158,99 @@ Problemas apontados pela primeira análise e corrigidos:
 
 - `src/app.js`: o Express expunha a versão do framework pelo cabeçalho `X-Powered-By`; o cabeçalho foi desativado com `app.disable("x-powered-by")`.
 - Workflows: o `npm ci` executava scripts de instalação dos pacotes; agora é usado `npm ci --ignore-scripts`.
+
+## Infraestrutura com Vagrant
+
+O `Vagrantfile` na raiz do projeto cria duas máquinas virtuais Ubuntu 24.04 (box `bento/ubuntu-24.04`) no provedor **VirtualBox**:
+
+| VM | Papel | Memória | IP privado (Classe C) |
+|----|-------|---------|------------------------|
+| `vm1` | Cliente, usada para testar a API | 1024 MB | `192.168.56.10` |
+| `vm2` | Backend, executa a API na porta 8080 | 1024 MB | `192.168.56.11` |
+
+Na `vm2`, o provisionamento:
+
+- instala o Node.js 20 e as dependências da aplicação (`npm ci --omit=dev`);
+- sincroniza a pasta do projeto com a pasta `/vagrant_data` da VM;
+- registra a API como serviço do systemd (`api-aluguel-imoveis`) e a executa a partir de `/vagrant_data`.
+
+A memória de 1024 MB é suficiente para o sistema operacional, o Node.js e a API em Express, que usa menos de 100 MB em execução.
+
+### Pré-requisitos
+
+- [VirtualBox](https://www.virtualbox.org/wiki/Downloads) 7.1 ou superior
+- [Vagrant](https://developer.hashicorp.com/vagrant/install) 2.4 ou superior
+
+### Passo a passo para executar a infraestrutura
+
+1. Clonar o repositório e entrar na pasta:
+
+   ```bash
+   git clone https://github.com/beatrijz/api-aluguel-imoveis.git
+   cd api-aluguel-imoveis
+   ```
+
+2. Criar e provisionar as duas VMs (na primeira vez, a box é baixada e o Node.js é instalado na `vm2`):
+
+   ```bash
+   vagrant up
+   ```
+
+3. Conferir se as duas VMs estão rodando:
+
+   ```bash
+   vagrant status
+   ```
+
+   As duas máquinas, `vm1` e `vm2`, devem aparecer como `running (virtualbox)`.
+
+4. (Opcional) Conferir se a API está em execução na `vm2`:
+
+   ```bash
+   vagrant ssh vm2 -c "systemctl status api-aluguel-imoveis --no-pager"
+   ```
+
+### Como testar a rota GET dentro da VM1
+
+1. Acessar a `vm1`:
+
+   ```bash
+   vagrant ssh vm1
+   ```
+
+2. Dentro da `vm1`, chamar a rota `GET /api/imoveis` da API que está na `vm2`, com `curl`:
+
+   ```bash
+   curl -i http://192.168.56.11:8080/api/imoveis
+   ```
+
+   Ou com `wget`:
+
+   ```bash
+   wget -qO- http://192.168.56.11:8080/api/imoveis
+   ```
+
+   A resposta esperada é `HTTP/1.1 200 OK` com a lista de imóveis em JSON.
+
+3. Sair da `vm1`:
+
+   ```bash
+   exit
+   ```
+
+O mesmo teste pode ser feito sem entrar na VM:
+
+```bash
+vagrant ssh vm1 -c "curl -i http://192.168.56.11:8080/api/imoveis"
+```
+
+### Outros comandos úteis
+
+```bash
+vagrant reload vm2      # reinicia a vm2 (a API é reiniciada junto)
+vagrant halt            # desliga as VMs
+vagrant destroy -f      # apaga as VMs
+```
 
 ## Docker e publicação no DockerHub
 
