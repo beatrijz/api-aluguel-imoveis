@@ -5,3 +5,5 @@ trabalho
 .git
 .github
 *.md
+.vagrant
+Vagrantfile
