@@ -1,5 +1,10 @@
 # API REST - Aluguel de Imóveis
 
+[![CI](https://github.com/beatrijz/api-aluguel-imoveis/actions/workflows/commits.yml/badge.svg?branch=main)](https://github.com/beatrijz/api-aluguel-imoveis/actions/workflows/commits.yml)
+[![Docker Hub](https://badgen.net/badge/icon/docker%20hub?icon=docker&label)](https://hub.docker.com/r/beatriijz/api-aluguel-imoveis)
+[![Docker pulls](https://badgen.net/docker/pulls/beatriijz/api-aluguel-imoveis?icon=docker&label=pulls)](https://hub.docker.com/r/beatriijz/api-aluguel-imoveis)
+[![Docker image size](https://badgen.net/docker/size/beatriijz/api-aluguel-imoveis/latest/amd64?icon=docker&label=tamanho)](https://hub.docker.com/r/beatriijz/api-aluguel-imoveis)
+
 API REST desenvolvida em JavaScript utilizando Node.js e Express.
 
 ## Objetivo
@@ -13,6 +18,7 @@ A API permite listar imóveis disponíveis para aluguel, cadastrar novos imóvei
 - Express
 - Git
 - GitHub
+- Docker
 
 ## Como executar
 
@@ -32,6 +38,24 @@ A API será executada em:
 
 ```
 http://localhost:8080
+```
+
+### Executar com Docker
+
+A imagem da API está publicada no DockerHub:
+
+https://hub.docker.com/r/beatriijz/api-aluguel-imoveis
+
+```bash
+docker pull beatriijz/api-aluguel-imoveis:latest
+docker run -p 8080:8080 beatriijz/api-aluguel-imoveis:latest
+```
+
+Ou, para construir a imagem localmente a partir do `Dockerfile`:
+
+```bash
+docker build -t api-aluguel-imoveis .
+docker run -p 8080:8080 api-aluguel-imoveis
 ```
 
 ## Endpoints
@@ -133,6 +157,16 @@ Problemas apontados pela primeira análise e corrigidos:
 
 - `src/app.js`: o Express expunha a versão do framework pelo cabeçalho `X-Powered-By`; o cabeçalho foi desativado com `app.disable("x-powered-by")`.
 - Workflows: o `npm ci` executava scripts de instalação dos pacotes; agora é usado `npm ci --ignore-scripts`.
+
+## Docker e publicação no DockerHub
+
+O workflow `.github/workflows/commits.yml` tem três jobs ligados ao Docker, executados depois do job **Qualidade de código**:
+
+1. **Construção da imagem Docker**: roda a cada push em qualquer branch. Constrói a imagem a partir do `Dockerfile` e a guarda como artefato do workflow.
+2. **Teste da imagem Docker**: sobe um container com a imagem construída e verifica se a rota `GET /api/imoveis` responde.
+3. **Publicação da imagem no DockerHub**: roda apenas em mudanças na `main` (baseline). Publica a imagem em `beatriijz/api-aluguel-imoveis` com as tags `latest` e o SHA do commit.
+
+As credenciais do DockerHub ficam nos secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` do repositório.
 
 ## Commits assinados
 

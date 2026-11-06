@@ -3,8 +3,10 @@ name: CI - Validação de Commits
 on:
   push:
     branches:
-      - main
-      - feature/**
+      - "**"
+
+env:
+  IMAGEM: api-aluguel-imoveis
 
 jobs:
   qualidade:
@@ -62,3 +64,80 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build-imagem:
+    name: Construção da imagem Docker
+    runs-on: ubuntu-latest
+    needs: qualidade
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Construir a imagem
+        run: docker build -t ${{ env.IMAGEM }}:${{ github.sha }} .
+
+      - name: Exportar a imagem
+        run: docker save ${{ env.IMAGEM }}:${{ github.sha }} -o imagem.tar
+
+      - name: Guardar a imagem para os próximos jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagem-docker
+          path: imagem.tar
+          retention-days: 1
+
+  teste-imagem:
+    name: Teste da imagem Docker
+    runs-on: ubuntu-latest
+    needs: build-imagem
+
+    steps:
+      - name: Baixar a imagem
+        uses: actions/download-artifact@v4
+        with:
+          name: imagem-docker
+
+      - name: Carregar a imagem
+        run: docker load -i imagem.tar
+
+      - name: Subir o container
+        run: docker run -d --name api -p 8080:8080 ${{ env.IMAGEM }}:${{ github.sha }}
+
+      - name: Verificar se a API responde
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf http://localhost:8080/api/imoveis; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs api
+          exit 1
+
+  publicar-imagem:
+    name: Publicação da imagem no DockerHub
+    runs-on: ubuntu-latest
+    needs: teste-imagem
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Baixar a imagem
+        uses: actions/download-artifact@v4
+        with:
+          name: imagem-docker
+
+      - name: Carregar a imagem
+        run: docker load -i imagem.tar
+
+      - name: Login no DockerHub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Publicar a imagem
+        env:
+          REPOSITORIO: ${{ secrets.DOCKERHUB_USERNAME }}/api-aluguel-imoveis
+        run: |
+          docker tag ${{ env.IMAGEM }}:${{ github.sha }} $REPOSITORIO:${{ github.sha }}
+          docker tag ${{ env.IMAGEM }}:${{ github.sha }} $REPOSITORIO:latest
+          docker push $REPOSITORIO:${{ github.sha }}
+          docker push $REPOSITORIO:latest
