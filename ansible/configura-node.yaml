@@ -1,0 +1,108 @@
+---
+# Playbook de instalação da API de aluguel de imóveis na VM2
+#
+# Execução (dentro da VM1):
+#   cd /vagrant_data/ansible
+#   ansible-playbook configura-node.yaml
+
+- name: Instalar e executar a API na VM2
+  hosts: backend
+  become: true
+
+  vars:
+    repositorio: https://github.com/beatrijz/api-aluguel-imoveis.git
+    versao: main
+    pasta_app: /home/vagrant/api-aluguel-imoveis
+    usuario_app: vagrant
+    porta_app: 8080
+
+  tasks:
+    - name: Instalar pacotes do sistema (git e curl)
+      ansible.builtin.apt:
+        name:
+          - git
+          - curl
+          - ca-certificates
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Instalar o Node.js 20 (repositório NodeSource)
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y nodejs
+      args:
+        executable: /bin/bash
+        creates: /usr/bin/node
+
+    - name: Clonar o repositório da aplicação
+      become: false
+      ansible.builtin.git:
+        repo: "{{ repositorio }}"
+        dest: "{{ pasta_app }}"
+        version: "{{ versao }}"
+        force: true
+      notify: Reiniciar a API
+
+    - name: Instalar as dependências de execução (npm ci)
+      become: false
+      ansible.builtin.command:
+        cmd: npm ci --omit=dev --ignore-scripts
+        chdir: "{{ pasta_app }}"
+      changed_when: true
+      notify: Reiniciar a API
+
+    - name: Criar o serviço da API no systemd
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/api-aluguel-imoveis.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=API REST - Aluguel de Imoveis
+          After=network.target
+
+          [Service]
+          WorkingDirectory={{ pasta_app }}
+          ExecStart=/usr/bin/node server.js
+          Restart=on-failure
+          User={{ usuario_app }}
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reiniciar a API
+
+    - name: Habilitar e iniciar o serviço da API
+      ansible.builtin.systemd_service:
+        name: api-aluguel-imoveis
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Reiniciar a API
+      ansible.builtin.systemd_service:
+        name: api-aluguel-imoveis
+        state: restarted
+        daemon_reload: true
+
+- name: Verificar a API a partir da VM1
+  hosts: controle
+
+  tasks:
+    - name: Aguardar a API abrir a porta 8080 na VM2
+      ansible.builtin.wait_for:
+        host: 192.168.56.11
+        port: 8080
+        timeout: 60
+
+    - name: Chamar a rota GET /api/imoveis
+      ansible.builtin.uri:
+        url: http://192.168.56.11:8080/api/imoveis
+        return_content: true
+        status_code: 200
+      register: resposta
+
+    - name: Mostrar a resposta da API
+      ansible.builtin.debug:
+        var: resposta.json

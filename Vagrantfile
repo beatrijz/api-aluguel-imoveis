@@ -1,6 +1,6 @@
 # Infraestrutura da API de aluguel de imóveis
 #
-# VM1 (cliente): 192.168.56.10 - usada para testar a API com curl/wget
+# VM1 (controle): 192.168.56.10 - nó de controle do Ansible e cliente (curl/wget)
 # VM2 (backend): 192.168.56.11 - executa a API na porta 8080
 #
 # Provedor: VirtualBox. A box bento/ubuntu-24.04 tem versões amd64 e arm64,
@@ -12,10 +12,16 @@ Vagrant.configure("2") do |config|
   # A pasta do projeto é sincronizada apenas na VM2 (vagrant_data)
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
-  # VM1 - cliente
+  # VM1 - nó de controle do Ansible e cliente para testar a API
   config.vm.define "vm1" do |vm1|
     vm1.vm.hostname = "vm1"
     vm1.vm.network "private_network", ip: "192.168.56.10"
+
+    # Monta o projeto (com a pasta ansible/) dentro da VM1. As permissões
+    # restritas são exigidas pelo SSH (chave privada da VM2) e pelo Ansible
+    # (que ignora o ansible.cfg em pastas com permissão de escrita para todos)
+    vm1.vm.synced_folder ".", "/vagrant_data",
+      mount_options: ["dmode=755", "fmode=600"]
 
     vm1.vm.provider "virtualbox" do |vb|
       vb.name = "api-aluguel-imoveis-vm1"
@@ -23,9 +29,10 @@ Vagrant.configure("2") do |config|
       vb.cpus = 1
     end
 
+    # Software necessário para executar o Ansible e testar a API
     vm1.vm.provision "shell", inline: <<-SHELL
       apt-get update -y
-      apt-get install -y curl wget
+      apt-get install -y curl wget ansible
     SHELL
   end
 

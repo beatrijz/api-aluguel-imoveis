@@ -20,6 +20,7 @@ A API permite listar imóveis disponíveis para aluguel, cadastrar novos imóvei
 - GitHub
 - Docker
 - Vagrant + VirtualBox
+- Ansible
 
 ## Como executar
 
@@ -165,7 +166,7 @@ O `Vagrantfile` na raiz do projeto cria duas máquinas virtuais Ubuntu 24.04 (bo
 
 | VM | Papel | Memória | IP privado (Classe C) |
 |----|-------|---------|------------------------|
-| `vm1` | Cliente, usada para testar a API | 1024 MB | `192.168.56.10` |
+| `vm1` | Nó de controle do Ansible e cliente para testar a API | 1024 MB | `192.168.56.10` |
 | `vm2` | Backend, executa a API na porta 8080 | 1024 MB | `192.168.56.11` |
 
 Na `vm2`, o provisionamento:
@@ -251,6 +252,84 @@ vagrant reload vm2      # reinicia a vm2 (a API é reiniciada junto)
 vagrant halt            # desliga as VMs
 vagrant destroy -f      # apaga as VMs
 ```
+
+## Configuração com Ansible
+
+A pasta `ansible/` contém a configuração do Ansible:
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `ansible/ansible.cfg` | Configuração do Ansible (inventário padrão e desativação da checagem de host key) |
+| `ansible/hosts.ini` | Inventário: `vm1` (grupo `controle`, conexão local) e `vm2` (grupo `backend`, `192.168.56.11`) |
+| `ansible/configura-node.yaml` | Playbook de instalação da aplicação |
+
+A **VM1 é o nó de controle**. No `vagrant up`, ela recebe o Ansible (`apt install ansible`) e a pasta do projeto montada em `/vagrant_data`, que inclui os arquivos de configuração do Ansible. A VM1 acessa a VM2 por SSH com a chave privada que o Vagrant gerou para a VM2 (`.vagrant/machines/vm2/virtualbox/private_key`).
+
+O playbook `configura-node.yaml` executa, na **VM2**:
+
+1. instalação do `git` e do `curl`;
+2. instalação do Node.js 20 (repositório NodeSource), caso ainda não esteja instalado;
+3. clone deste repositório (branch `main`) em `/home/vagrant/api-aluguel-imoveis`;
+4. instalação das dependências de execução (`npm ci --omit=dev`);
+5. criação do serviço `api-aluguel-imoveis` no systemd, que executa a API a partir do repositório clonado na porta 8080.
+
+Por fim, a partir da **VM1**, o playbook espera a porta 8080 da VM2 abrir e chama a rota `GET /api/imoveis`, falhando se a resposta não for `200 OK`.
+
+### Como executar a configuração
+
+1. Subir as VMs (se ainda não estiverem rodando):
+
+   ```bash
+   vagrant up
+   ```
+
+2. Acessar a VM1 (nó de controle):
+
+   ```bash
+   vagrant ssh vm1
+   ```
+
+3. Dentro da VM1, conferir se o Ansible está instalado e se alcança a VM2:
+
+   ```bash
+   cd /vagrant_data/ansible
+   ansible --version
+   ansible backend -m ping
+   ```
+
+   A resposta esperada do `ping` é `vm2 | SUCCESS` com `"ping": "pong"`.
+
+4. Executar o playbook:
+
+   ```bash
+   ansible-playbook configura-node.yaml
+   ```
+
+   No final, o resumo (`PLAY RECAP`) deve mostrar `failed=0` para `vm1` e `vm2`, e a tarefa **Mostrar a resposta da API** exibe a lista de imóveis retornada pela VM2.
+
+### Como testar a aplicação com curl ou wget
+
+Ainda dentro da VM1, chamar a rota GET da API que está rodando na VM2:
+
+```bash
+curl -i http://192.168.56.11:8080/api/imoveis
+```
+
+Ou com `wget`:
+
+```bash
+wget -qO- http://192.168.56.11:8080/api/imoveis
+```
+
+A resposta esperada é `HTTP/1.1 200 OK` com a lista de imóveis em JSON.
+
+Para conferir se a API na VM2 está rodando a partir do repositório clonado pelo Ansible:
+
+```bash
+ansible backend -a "systemctl show api-aluguel-imoveis -p ActiveState -p WorkingDirectory"
+```
+
+A resposta esperada é `ActiveState=active` e `WorkingDirectory=/home/vagrant/api-aluguel-imoveis`.
 
 ## Docker e publicação no DockerHub
 
